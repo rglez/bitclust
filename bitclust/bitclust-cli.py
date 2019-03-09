@@ -307,7 +307,6 @@ if __name__ == '__main__':
     os.chdir('results')
     frames_stats = get_frames_stats(clusters, leaders)
     clusters_stats = get_cluster_stats(clusters, leaders)
-    os.chdir('..')
     # =========================================================================
     # graph 1: rmsd_vs_reference (A)
     # =========================================================================
@@ -381,3 +380,4 @@ if __name__ == '__main__':
     colors_list = (im.cmap(im.norm(np.unique(data))))
     plt.savefig('clusters_colorbar', dpi=300, bbox_inches='tight')
     plt.close()
+    os.chdir('..')

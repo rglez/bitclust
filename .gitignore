@@ -1,6 +1,7 @@
 __pycache__/
 benchmark/
 /bitclust/examples
+/bitclust/results
 *_list.txt
 tests
 *.pyc
