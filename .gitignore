@@ -1,0 +1,11 @@
+__pycache__/
+benchmark/
+/bitclust/examples
+*_list.txt
+tests
+*.pyc
+build
+dist
+docs
+*egg*
+/docs
