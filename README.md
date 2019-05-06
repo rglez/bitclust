@@ -1,10 +1,10 @@
-BitClust: Fast and memory efficient clustering of long Molecular Dynamics
-=========================================================================
+# BitClust: Fast and memory efficient clustering of long Molecular Dynamics
+
 
 # Home Page
 -----------
 
-Bitclust´s latest documentation is available [here](https://bitclust.readthedocs.io/en/latest/) 
+BitClust´s latest documentation is available [here](https://bitclust.readthedocs.io/en/latest/) 
 
 
 # Description
@@ -18,7 +18,6 @@ much faster way (see benchmark section for more details).
 
 
 # Motivation
-------------
 
 Nowadays very long simulations are carried on routinely. Enhanced sampling
 methods like metadynamics, REMD and accelerated dynamics allow escaping from
@@ -36,7 +35,6 @@ that saves the same information as single precision float values.
 
 
 # Main Dependencies
--------------------
 
 **BitClust** is built on the shoulders of two giants:
 
@@ -51,7 +49,7 @@ that saves the same information as single precision float values.
 
 
 # Citation
-----------
+
 If you make use of **BitClust** in your scientific work, **BeCool** and cite it ;)
 
 The BibTeX reference is:
@@ -61,12 +59,11 @@ The BibTeX reference is:
 
 
 # Licence
----------
 
 **BitClust** is licensed under GNU General Public License v3.0.
   
   
-# References
-------------
+# Reference
+
 [1] Daura, X.; van Gunsteren, W. F.; Jaun, B.; Mark, A. E.; Gademann, K.; Seebach, D. Peptide Folding: When Simulation Meets Experiment. Angew. Chemie Int. Ed. 1999, 38 (1/2), 236–240.
 
