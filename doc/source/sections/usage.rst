@@ -143,6 +143,7 @@ Next you will find some usage examples of **BitClust**.
    
  $ bitclust.py  -traj tau_6K.pdb -first 0 -last 100000 -stride 100
 
+
 ::
 
  # Solvated trajectory tau_6K_solvated.dcd will be clustered without loading water
@@ -154,17 +155,19 @@ Next you will find some usage examples of **BitClust**.
 
 
 ::
-
+ # Clustering all atoms but hydrogen´ ones.
+ 
  $ bitclust.py -top tau_6K.pdb -traj tau_6K.dcd -sel "all and element != H"
 
 
-
 ::
+
  # Backbone atoms of trajectory tau_6K.dcd will be clustered using a cutoff of 4 A.
  # Retreived clusters will have at least 15 frames and output RMSD graphs will use
  # frame 2580 (counting from 0) as reference structure. 
 
  $ bitclust.py -top tau_6K.pdb -traj tau_6K.dcd -sel "backbone" -cutoff 4 -minsize 15 -ref 2580
+
 
 ::
 
