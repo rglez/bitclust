@@ -1,5 +1,7 @@
 Changelog
 =========
 
-This is an example tutorial that will guide you through a complete analysis
-using BitClust.
+Version 0.0.1 (May 5, 2019)
+-----------------------------
+
+- Initial release
