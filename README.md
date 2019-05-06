@@ -1,13 +1,24 @@
 BitClust: Fast and memory efficient clustering of long Molecular Dynamics
 =========================================================================
 
-Home Page
----------
-Bitclust´s documentation is available at 
+# Home Page
+-----------
+
+Bitclust´s latest documentation is available [here](https://bitclust.readthedocs.io/en/latest/) 
 
 
-Motivation
-----------
+# Description
+-------------
+
+**BitClust** is a Python command line interface (CLI) conceived for fast
+clustering of relatively long Molecular Dynamics trajectories following
+Daura's algorithm [1]. Retrieved clusters are roughly equivalent to those
+reported by **VMD's** internal command **measure cluster** but they are computed in a
+much faster way (see benchmark section for more details).
+
+
+# Motivation
+------------
 
 Nowadays very long simulations are carried on routinely. Enhanced sampling
 methods like metadynamics, REMD and accelerated dynamics allow escaping from
@@ -24,23 +35,23 @@ This encoding result in a storage reduction as high as 16X compared to similar a
 that saves the same information as single precision float values.
 
 
-Main Dependencies
------------------
+# Main Dependencies
+-------------------
 
 **BitClust** is built on the shoulders of two giants:
 
- *  `MDTraj software <http://mdtraj.org/1.9.0/>`_  that allows a very fast
+ *  [MDTraj software](http://mdtraj.org/1.9.0/)  that allows a very fast
     calculation of RMSD pairwise distances between all frames of trajectories in
     a parallelized fashion **and**
 
- * `bitarray third-party python library <https://pypi.org/project/bitarray/>`_ 
+ * [bitarray third-party python library](https://pypi.org/project/bitarray/) 
    which offers a memory efficient data structure of bit vectors (bit arrays)
    and a set of bitwise operations that are the very heart of our clustering
    implementation.
 
 
-Citation
---------
+# Citation
+----------
 If you make use of **BitClust** in your scientific work, **BeCool** and cite it ;)
 
 The BibTeX reference is:
@@ -49,11 +60,13 @@ The BibTeX reference is:
   insert once published.
 
 
-Licence
--------
+# Licence
+---------
+
 **BitClust** is licensed under GNU General Public License v3.0.
   
-References
-----------
-.. [1] Daura, X.; van Gunsteren, W. F.; Jaun, B.; Mark, A. E.; Gademann, K.; Seebach, D. Peptide Folding: When Simulation Meets Experiment. Angew. Chemie Int. Ed. 1999, 38 (1/2), 236–240.
+  
+# References
+------------
+[1] Daura, X.; van Gunsteren, W. F.; Jaun, B.; Mark, A. E.; Gademann, K.; Seebach, D. Peptide Folding: When Simulation Meets Experiment. Angew. Chemie Int. Ed. 1999, 38 (1/2), 236–240.
 
