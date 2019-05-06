@@ -34,7 +34,7 @@ def parse_arguments():
     '''
 
     # Initializing argparse ---------------------------------------------------
-    desc = '\nBitClust: Fast & memory efficient clustering of MD trajectories'
+    desc = '\nBitClust: Fast & memory efficient clustering of long MD trajectories'
     parser = argparse.ArgumentParser(description=desc,
                                      add_help=True,
                                      epilog='As simple as that ;)')
@@ -57,12 +57,16 @@ def parse_arguments():
     parser.add_argument('-sel', dest='selection', action='store',
                         help='atom selection (MDTraj syntax)',
                         type=str, required=False, default='all')
+    parser.add_argument('-rmwat', dest='remove_waters', action='store',
+                        help='remove waters from trajectory?',
+                        type=bool, required=False, default=0,
+                        choices=[True, False])
     # Arguments: clustering ---------------------------------------------------
     parser.add_argument('-cutoff', action='store', dest='cutoff',
                         help='RMSD cutoff for pairwise comparisons in A',
                         type=float, required=False, default=1.0)
     parser.add_argument('-minsize', action='store', dest='minsize',
-                        help='minimum number of frames of returned cluster',
+                        help='minimum number of frames inside returned clusters',
                         type=int, required=False, default=2)
     parser.add_argument('-ref', action='store', dest='reference',
                         help='reference frame to align trajectory',
@@ -96,6 +100,12 @@ def load_trajectory(args):
         trajectory = md.load(traj_file)
     else:
         trajectory = md.load(traj_file, top=args.topology)
+    # Reduce RAM consumption by loading all atoms except water ----------------
+    if args.remove_waters:
+        nowat_indx = trajectory.topology.select('all != water')
+        nowat_traj = trajectory.restrict_atoms(nowat_indx)
+        del trajectory
+        trajectory = nowat_traj
     # Reduce RAM consumption by loading selected atoms only -------------------
     if args.selection != 'all':
         sel_indx = trajectory.topology.select(args.selection)
@@ -104,6 +114,7 @@ def load_trajectory(args):
         trajectory = sel_traj[args.first:args.last:args.stride]
     else:
         trajectory = trajectory[args.first:args.last:args.stride]
+
     return trajectory
 
 
@@ -193,9 +204,7 @@ def bitclusterize(matrix, degrees):
 def calc_rms_vectors(trajectory, args):
     '''
     DESCRIPTION
-    Calculates RMSD square matrix using MDTraj. Pairwise similarity is saved in
-    RAM as bits (dict of bitarrays), not floats.
-
+    Calculates RMSD of all frames vs. referenece.
     Args:
         trajectory (mdtraj.Trajectory): trajectory object to analyze.
         args (argparse.Namespace): user input parameters parsed by argparse.
@@ -216,7 +225,7 @@ def get_frames_stats(clusters, leaders):
     '''
     DESCRIPTION
     Gets plain text file "frames_statistics.txt" which contains as columns:
-    frameID, clusterID and rmsd distance.
+    frameID, clusterID and RMSD distance.
 
     Args:
         clusters
@@ -280,11 +289,11 @@ def generic_matplotlib():
     mpl.rc('axes', titlesize=10, linewidth=1)
     mpl.rcParams['axes.labelweight'] = 'bold'
 
-    mpl.rc('xtick', labelsize=10, direction='out', top=False)
+    mpl.rc('xtick', labelsize=12, direction='out', top=False)
     mpl.rc('xtick.major', top=False, )
     mpl.rc('xtick.minor', top=False, visible=False)
 
-    mpl.rc('ytick', labelsize=10, direction='out', right=False)
+    mpl.rc('ytick', labelsize=12, direction='out', right=False)
     mpl.rc('ytick.major', right=True, )
     mpl.rc('ytick.minor', right=True, visible=False)
 
@@ -303,30 +312,38 @@ if __name__ == '__main__':
     clusters, leaders = bitclusterize(matrix, degrees)
     rmsd_ = calc_rms_vectors(trajectory, inputs)
     # --- Stage 4: Analysis ---------------------------------------------------
-    os.mkdir('results')
-    os.chdir('results')
+    if inputs.outdir == './':
+        pass
+    else:
+        os.makedirs(inputs.outdir)
+        os.chdir(inputs.outdir)
     frames_stats = get_frames_stats(clusters, leaders)
     clusters_stats = get_cluster_stats(clusters, leaders)
     # =========================================================================
     # graph 1: rmsd_vs_reference (A)
     # =========================================================================
     generic_matplotlib()
-    plt.ylabel('RMSD ($\AA$)', fontsize=10)
-    plt.xlabel('Frame ID', fontsize=10)
-    plt.plot(frames_stats.rmsd, lw=0.1, ls='-', color='navy', alpha=0.85)
-    plt.savefig('rmsd_all_vs_reference', dpi=300, bbox_inches='tight',
+    mpl.rc('figure', autolayout=True, figsize=[7, 3.5], dpi=300)
+    mpl.rc('xtick', labelsize=18, direction='out', top=False)
+    mpl.rc('ytick', labelsize=18, direction='out', right=False)
+    plt.ylabel('RMSD ($\AA$)', fontsize=18)
+    plt.xlabel('Frame ID', fontsize=18)
+    colors = ['r', 'orange', 'green', 'blue', 'purple']
+    plt.scatter(frames_stats.frame, frames_stats.rmsd, marker='x', s=8,
+                color='gray', alpha=1, label='RMSD vs. reference')
+    plt.savefig('rmsd_all_vs_reference', dpi=300,
                 alpha=0.85)
     plt.close()
     # only for article publication
-    run('mogrify -resize 1000x750 -density 300 -units PixelsPerInch rmsd_all_vs_reference.png', shell=True)
+    run('mogrify -resize 2100x1050 -density 300 -units PixelsPerInch rmsd_all_vs_reference.png', shell=True)
 
     # =========================================================================
     # graph 2: clusterlines
     # =========================================================================
     generic_matplotlib()
-    plt.ylabel('Cluster ID', fontsize=10)
-    plt.xlabel('Frame ID', fontsize=10)
-    plt.plot(frames_stats.cluster_id, lw=0, marker='+', ms=1, color='navy',
+    plt.ylabel('Cluster ID', fontsize=14)
+    plt.xlabel('Frame ID', fontsize=14)
+    plt.plot(frames_stats.cluster_id, lw=0, marker='+', ms=1, color='k',
              alpha=0.85)
     plt.savefig('clusters_lines', dpi=300, bbox_inches='tight')
     plt.close()
@@ -336,48 +353,41 @@ if __name__ == '__main__':
     # graph 3: clustersizes
     # =========================================================================
     generic_matplotlib()
-    plt.ylabel('Cluster size (%)', fontsize=10)
-    plt.xlabel('Cluster ID', fontsize=10)
+    plt.ylabel('Cluster size (%)', fontsize=14)
+    plt.xlabel('Cluster ID', fontsize=14)
     plt.ylim(-1, clusters_stats['percent'].max()+5)
     plt.bar(clusters_stats.cluster_id,
-            clusters_stats['percent'], color='navy', width=0.8, alpha=0.85)
-    if -1 in leaders:
-        plt.bar(clusters_stats.cluster_id[0], clusters_stats['percent'][0],
-                color='r', width=0.8, label='Outliers', alpha=1)
-    else:
-        plt.bar(clusters_stats.cluster_id[0], clusters_stats['percent'][0],
-                color='navy', width=0.8, label='Outliers', alpha=1)
+            clusters_stats['percent'], color='k', width=0.8, alpha=0.85)
+
+    plt.bar(clusters_stats.cluster_id[0], clusters_stats['percent'][0],
+            color='r', width=0.8, label='Outliers', alpha=1)
     plt.legend(loc='upper right')
     plt.savefig('clusters_sizes', dpi=300, bbox_inches='tight')
     plt.close()
     run('mogrify -resize 1000x750 -density 300 -units PixelsPerInch clusters_sizes.png', shell=True)
 
-
-
     # =========================================================================
-    # graph 4: colorbar
+    # graph 4: coloRMSD colored by clusters
     # =========================================================================
     generic_matplotlib()
-#    mpl.rc('axes', labelsize=12)
-#    mpl.rc('font', family='monospace', size=12)
-    mpl.rc('figure', autolayout=True, figsize=[6.197, 2.5], dpi=300)
-    cmap = 'rainbow'
-    data = np.asmatrix(frames_stats.cluster_id)
-    plt.locator_params(axis='y', nbins=3)
-    gs1 = mpl.gridspec.GridSpec(8, 1)
-    gs1.update(hspace=0.08, wspace=0.01)
-    ax1 = plt.subplot(gs1[:1, :1])
-#    ax2 = plt.subplot(gs1[1:2, :1])
-#    ax2.plot(range(0,1), color=cmap)
-    plt.xlabel('Cluster ID', fontsize=8)
-    im = plt.imshow(data, aspect='auto', interpolation='none', cmap=cmap)
-#    cbar = plt.colorbar()
-#    cbar.set_ticks([])
-    plt.tight_layout()
-    plt.tick_params(axis="y", which='both', left=False, right=False,
-                    labelleft=False)
-    plt.tick_params(axis="x", direction="out", which='both', top=False)
-    colors_list = (im.cmap(im.norm(np.unique(data))))
-    plt.savefig('clusters_colorbar', dpi=300, bbox_inches='tight')
+    mpl.rc('figure', autolayout=True, figsize=[7, 3.5], dpi=300)
+    mpl.rc('xtick', labelsize=18, direction='out', top=False)
+    mpl.rc('ytick', labelsize=18, direction='out', right=False)
+    plt.ylabel('RMSD ($\AA$)', fontsize=18)
+    plt.xlabel('Frame ID', fontsize=18)
+    colors = ['r', 'orange', 'green', 'blue', 'purple']
+    plt.scatter(frames_stats.frame, frames_stats.rmsd, marker='x', s=8,
+                color='gray', alpha=0.3, label='RMSD')
+    for i, c in enumerate(colors):
+        frames = frames_stats[frames_stats.cluster_id == i].frame
+        rms = frames_stats[frames_stats.cluster_id == i].rmsd
+        plt.scatter(frames, rms, color=c, marker='+', s=8, alpha=0.5,
+                    label='Clust-{}'.format(i+1))
+        plt.legend(bbox_to_anchor=(0.95, 1), markerscale=5,
+                   fontsize='xx-large')
+    plt.savefig('rmsd_all_vs_reference_colored', dpi=300)
     plt.close()
-    os.chdir('..')
+    # only for article publication
+    run('mogrify -resize 2100x1050 -density 300 -units PixelsPerInch rmsd_all_vs_reference_colored.png', shell=True)
+
+    print('\n\n\nNORMAL TERMINATION :)')

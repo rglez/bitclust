@@ -3,69 +3,79 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-   
-BitClust
-========
+Welcome to BitClust's documentation
+===================================
+.. warning :: This site is under mainteinance !!!
+
+Motivation
+----------
 
 Nowadays very long simulations are carried on routinely. Enhanced sampling
-methods like metadynamics, REMD and accelerated dynamics allow scaping from
+methods like metadynamics, REMD and accelerated dynamics allow escaping from
 potential energy minima, returning trajectories that are conformationally sparsed
-and where every cluster can be potentially important to detect and analyze.
-Timescales in the order of micro and milliseconds are becoming familiar and
-consequently, tools for analyzing such huge trajectories must be upgraded.
+and where every cluster can be potentially important to detect and analyze. Improvements
+on software designed to address this task is an important field of research.
+
+
+Description
+-----------
 
 **BitClust** is a Python command line interface (CLI) conceived for fast
 clustering of relatively long Molecular Dynamics trajectories following
-Daura's algorithm [cite]. Retrieved clusters are roughly equivalent to those
-obtained by VMD's internal command *measure cluster* but in a much faster way
-(see benchmark section for details).
+Daura's algorithm [1]_. Retrieved clusters are roughly equivalent to those
+reported by **VMD's** internal command **measure cluster** but they are computed in a
+much faster way (see benchmark section for more details).
+
+**BitClust** offer is a classical tradeoff; RAM for speed. It is able to
+calculate all pairwise distances between frames to run a clustering job and
+then store them in memory instead of recalculating them whenever a cluster is found.
+It is worth noting that used memory has been deeply optimized by encoding similarity distances
+as bits (0 if the distance is less equal than a specified threshold, 1 otherwise).
+This encoding result in a storage reduction as high as 16X compared to similar algorithms
+that saves the same information as single precision float values.
+
+
+Main Dependencies
+-----------------
 
 **BitClust** is built on the shoulders of two giants:
 
- *  `MDTraj <http://mdtraj.org/1.9.0/>`_ software that allows a very fast
+ *  `MDTraj software <http://mdtraj.org/1.9.0/>`_  that allows a very fast
     calculation of RMSD pairwise distances between all frames of trajectories in
     a parallelized fashion **and**
 
- * `bitarray <https://pypi.org/project/bitarray/>`_ 3rd party python library
+ * `bitarray third-party python library <https://pypi.org/project/bitarray/>`_ 
    which offers a memory efficient data structure of bit vectors (bit arrays)
-   and a set of bitwise operations that are the very heart of the clustering
-   implementation it offers.
-
-
-What **BitClust** offers is a classical tradeoff; RAM for speed. It is able to
-calculate all the information needed to run a clustering job and then store it
-in memory instead of recalculating it at every iteration. It is worth noting
-that used memory have been deeply optimized by encoding similarity distances
-as bits. This encoding result in a storage reduction as high as 16X compared to
-algorithms that saves pairwise distances as single precision float values.
+   and a set of bitwise operations that are the very heart of our clustering
+   implementation.
 
 
 Citation
 --------
-If you make use of **BitClust** in your scientific work, please contribute with
-a citation. The BibTeX reference is:
+If you make use of **BitClust** in your scientific work, **BeCool** and cite it ;)
+
+The BibTeX reference is:
+
+.. todo::
+  insert once published.
 
 
 Licence
 -------
 **BitClust** is licensed under GNU General Public License v3.0.
-
-
+  
+  
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
-   
+   :hidden:
+
    sections/installation
-   sections/arguments
-   sections/usage_examples
+   sections/usage
+   sections/help
    sections/benchmark
-   sections/code_reference
-   sections/changelog
+   sections/changelog    
 
+References
+----------
+.. [1] Daura, X.; van Gunsteren, W. F.; Jaun, B.; Mark, A. E.; Gademann, K.; Seebach, D. Peptide Folding: When Simulation Meets Experiment. Angew. Chemie Int. Ed. 1999, 38 (1/2), 236–240.
 
-Indices
-=======
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
