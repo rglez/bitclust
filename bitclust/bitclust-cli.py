@@ -319,6 +319,7 @@ if __name__ == '__main__':
         os.chdir(inputs.outdir)
     frames_stats = get_frames_stats(clusters, leaders)
     clusters_stats = get_cluster_stats(clusters, leaders)
+
     # =========================================================================
     # graph 1: rmsd_vs_reference (A)
     # =========================================================================
@@ -334,8 +335,6 @@ if __name__ == '__main__':
     plt.savefig('rmsd_all_vs_reference', dpi=300,
                 alpha=0.85)
     plt.close()
-    # only for article publication
-    run('mogrify -resize 2100x1050 -density 300 -units PixelsPerInch rmsd_all_vs_reference.png', shell=True)
 
     # =========================================================================
     # graph 2: clusterlines
@@ -347,7 +346,6 @@ if __name__ == '__main__':
              alpha=0.85)
     plt.savefig('clusters_lines', dpi=300, bbox_inches='tight')
     plt.close()
-    run('mogrify -resize 1000x750 -density 300 -units PixelsPerInch clusters_lines.png', shell=True)
 
     # =========================================================================
     # graph 3: clustersizes
@@ -364,7 +362,6 @@ if __name__ == '__main__':
     plt.legend(loc='upper right')
     plt.savefig('clusters_sizes', dpi=300, bbox_inches='tight')
     plt.close()
-    run('mogrify -resize 1000x750 -density 300 -units PixelsPerInch clusters_sizes.png', shell=True)
 
     # =========================================================================
     # graph 4: coloRMSD colored by clusters
@@ -387,7 +384,8 @@ if __name__ == '__main__':
                    fontsize='xx-large')
     plt.savefig('rmsd_all_vs_reference_colored', dpi=300)
     plt.close()
-    # only for article publication
-    run('mogrify -resize 2100x1050 -density 300 -units PixelsPerInch rmsd_all_vs_reference_colored.png', shell=True)
 
+    # only for article publication
+    # run('mogrify -resize 2100x1050 -density 300 -units PixelsPerInch
+    # rmsd_all_vs_reference_colored.png', shell=True)
     print('\n\n\nNORMAL TERMINATION :)')
