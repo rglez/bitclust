@@ -19,30 +19,33 @@ path to a topology file. Valid topology extensions are:  ``.pdb``, ``.pdb.gz``,
 Default usage
 -------------
 
-Once installed, you can have access to the program’s help, which contains short
+Once **BitClust** installed, you can have access to the program’s help, which contains short
 descriptions of available arguments, by running ::
  
- $ bitclust.py -h 
+ $ bitclust -h 
 
-Only one argument is always mandatory, ``-traj``, which specifies the path to
-trajectory file. If trajectory format does not provide topological information of
+Only one argument is always mandatory, ``-traj``, which specifies the path to the
+trajectory file. If the trajectory format does not provide topological information of
 the system, it must be supplied from a topology file through the
 ``-top`` argument. All other arguments are always optional and if not explicitly
-specified they will take default values commented below.
+specified they will take their default values commented below.
  
 A minimal run like ::
 
  $ bitclust.py -top tau_6K.pdb -traj tau_6K.dcd 
  
 loads the tau_6K.dcd trajectory into tau_6K.pdb coordinates (both present at
-current working directory) and performs a clustering job using Daura’s algorithm
-with a cutoff of 1A (``-cutoff`` 1) on the whole trajectory. Arguments ``-first``,
-``-last`` and -stride can be used to select an interval (they defaults to 0,
-last and 1 respectively). Default atom selection corresponds to all atoms
-(``-sel`` all). **BitClust** will retrieve all clusters with at least 2 frames
-(``-size`` 2). Frame 0 will be used as reference (``-ref`` 0)
-to make an RMSD graph. All produced output will be saved in current working
-directory (``-odir`` .).
+current working directory as not path was provided) and performs a clustering job using Daura’s algorithm
+with a cutoff of 1A (``-cutoff`` 1) on the whole trajectory.
+
+Arguments ``-first``, ``-last`` and ``-stride`` can be used to select an interval
+(they default to 0, last and 1 respectively).
+
+Default atom selection corresponds to all atoms (``-sel`` all). **BitClust** will
+retrieve all clusters with at least 2 frames (``-size`` 2).
+
+Frame 0 will be used as reference (``-ref`` 0) to make an RMSD graph. All produced
+output will be saved in the current working directory (``-odir`` .).
 
 
 Default outputs
@@ -53,8 +56,8 @@ results (see figure below). All these graphs and others can be constructed from
 two generated text files: **clusters_statistics.txt** and **frames_statistics.txt**.
 
 The first one contains as columns every ``cluster ID``` (starting from 0,
--1 corresponding to unclustered frames), its ``size``, the ``percent`` this size
-represents from the total of frames and the ``center`` frame of every cluster.
+-1 corresponding to unclustered frames), their ``size``, the ``percent`` this
+size represents from the total of frames and the ``center`` frame of every cluster.
 
 The second file contains as columns every ``frame ID`` (starting from 0),
 the ``cluster ID`` where every frame belongs to and the ``RMSD`` value of every
@@ -63,17 +66,15 @@ frame respect to the specified reference (default reference is frame 0).
 
 .. admonition :: **BitClust's** basic graph outputs
    
-  **Figure A:** RMSD of all frames in trajectory versus reference frame passed
-  to argument ``-ref``. Useful for fast visualization of trajectory's geometrical
-  dispersion.
+  **Figure A:** RMSD of all frames in trajectory versus reference frame passed to argument ``-ref``. Useful for fast visualization of trajectory's geometrical dispersion.
 
   **Figure B:** Superposition of first five clusters onto **Figure A**. Useful
-  for fast visualization of most populated clusters location along trajectory.
+  for fast visualization of most populated clusters location along the trajectory.
 
   **Figure C:** Clusters (including outliers in red) size. Useful for inspection
   of clusters relative population.
 
-  **Figure D:** Cluster lines. Useful to qualitatively assesment on temporal
+  **Figure D:** Cluster lines. Useful to qualitatively assessment on temporal
   distribution of clusters.
   
 .. figure :: /custom/outputs.png
@@ -85,8 +86,8 @@ Selection syntax
 **BitClust** inherits atom selection syntax from **MDTraj** which is similar to that
 in VMD. We reproduce below some of the **MDTraj** examples. Note that in **BitClust**
 all keywords (or their synonyms) string are passed directly to ``-sel`` argument
-as it is illustrated in the Usage examples section. For more details on possible
-syntax, please refer to `MDTraj original documentation <http://mdtraj.org/1.9.0/atom_selection.html>`_.
+as it is illustrated in the Usage Examples section. For more details on possible
+syntax, please refer to `MDTraj original documentation <http://mdtraj.org/1.9.3/atom_selection.html>`_.
 
 **MDTraj** recognizes the following keywords.
 
@@ -134,7 +135,7 @@ the form ``<expression> <low> to <high>``, which resolves to ``<low> <=
 Usage examples
 --------------
 
-Next you will find some usage examples of **BitClust**.
+Next, you will find some usage examples of **BitClust**.
 
 ::
 
@@ -145,26 +146,16 @@ Next you will find some usage examples of **BitClust**.
 
 
 ::
-
- # Solvated trajectory tau_6K_solvated.dcd will be clustered without loading water
- # molecules. Default values for all other arguments (see help section) will be used.
- # If you want to remove atoms corresponding to other solvents, you can specify it
- # through ``-sel`` argument. 
-
- $ bitclust.py -top tau_6K_wat_solvated.pdb -traj tau_6K_wat_solvated.dcd -rmwat True
-
-
-::
  # Clustering all atoms but hydrogen´ ones.
  
- $ bitclust.py -top tau_6K.pdb -traj tau_6K.dcd -sel "all and element != H"
+ $ bitclust.py -top tau_6K.pdb -traj tau_6K.dcd -sel "\"name =~ '[^H.*]'\"" 
 
 
 ::
 
  # Backbone atoms of trajectory tau_6K.dcd will be clustered using a cutoff of 4 A.
- # Retreived clusters will have at least 15 frames and output RMSD graphs will use
- # frame 2580 (counting from 0) as reference structure. 
+ # Retrieved clusters will have at least 15 frames and output RMSD graphs will use
+ # frame 2580 (counting from 0) as a reference structure. 
 
  $ bitclust.py -top tau_6K.pdb -traj tau_6K.dcd -sel "backbone" -cutoff 4 -minsize 15 -ref 2580
 

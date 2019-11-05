@@ -1,7 +1,7 @@
 Changelog
 =========
 
-Version 0.0.1 (May 5, 2019)
+Version 0.0.6 (October, 2019)
 -----------------------------
 
-- Initial release
+- Initial stable public release after publication.

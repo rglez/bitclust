@@ -24,9 +24,9 @@ copyright = '2019, Roy Gonzalez-Aleman'
 author = 'Roy Gonzalez-Aleman'
 
 # The short X.Y version
-version = ''
+version = '0.0.6'
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
+release = '0.0.6'
 
 
 # -- General configuration ---------------------------------------------------

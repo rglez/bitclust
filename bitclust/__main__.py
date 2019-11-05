@@ -11,11 +11,11 @@
 
 '''
 import os
+import shutil
 import argparse
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
-from subprocess import run
 import matplotlib.pyplot as plt
 from collections import OrderedDict
 
@@ -23,7 +23,6 @@ import mdtraj as md
 from bitarray import bitarray as ba
 
 
-# @profile
 def parse_arguments():
     '''
     DESCRIPTION
@@ -57,10 +56,7 @@ def parse_arguments():
     parser.add_argument('-sel', dest='selection', action='store',
                         help='atom selection (MDTraj syntax)',
                         type=str, required=False, default='all')
-    parser.add_argument('-rmwat', dest='remove_waters', action='store',
-                        help='remove waters from trajectory?',
-                        type=bool, required=False, default=0,
-                        choices=[True, False])
+
     # Arguments: clustering ---------------------------------------------------
     parser.add_argument('-cutoff', action='store', dest='cutoff',
                         help='RMSD cutoff for pairwise comparisons in A',
@@ -71,15 +67,27 @@ def parse_arguments():
     parser.add_argument('-ref', action='store', dest='reference',
                         help='reference frame to align trajectory',
                         type=int, required=False, default=0)
+
     # Arguments: analysis -----------------------------------------------------
     parser.add_argument('-odir', action='store', dest='outdir',
                         help='output directory to store analysis',
                         type=str, required=False, default='./')
+
     user_inputs = parser.parse_args()
     return user_inputs
 
 
-# @profile
+# Debuging jobs can start from here
+# args = argparse.Namespace
+# args.topology = './examples/aligned_tau.pdb'
+# args.trajectory = './examples/aligned_original_tau_6K.dcd'
+# args.selection = 'all'
+# args.cutoff = 4
+# args.minsize = 50
+# args.reference = 0
+# args.outdir = './out'
+
+
 def load_trajectory(args):
     '''
     DESCRIPTION
@@ -92,7 +100,6 @@ def load_trajectory(args):
     Return:
         trajectory (mdtraj.Trajectory): trajectory object for further analysis.
     '''
-
     traj_file = args.trajectory
     traj_ext = traj_file.split('.')[-1]
     # Does trajectory file format need topology ? -----------------------------
@@ -100,25 +107,33 @@ def load_trajectory(args):
         trajectory = md.load(traj_file)
     else:
         trajectory = md.load(traj_file, top=args.topology)
-    # Reduce RAM consumption by loading all atoms except water ----------------
-    if args.remove_waters:
-        nowat_indx = trajectory.topology.select('all != water')
-        nowat_traj = trajectory.restrict_atoms(nowat_indx)
-        del trajectory
-        trajectory = nowat_traj
     # Reduce RAM consumption by loading selected atoms only -------------------
-    if args.selection != 'all':
-        sel_indx = trajectory.topology.select(args.selection)
-        sel_traj = trajectory.restrict_atoms(sel_indx)
-        del trajectory
-        trajectory = sel_traj[args.first:args.last:args.stride]
-    else:
-        trajectory = trajectory[args.first:args.last:args.stride]
-
+    sel = trajectory.topology.select(args.selection)
+    trajectory = trajectory.atom_slice(sel)
     return trajectory
 
 
-# @profile
+def np_to_bitarray(np_array, N):
+    '''
+    DESCRIPTION
+    Converts a numpy array to a bitarray using the fastest way. It creates a
+    bitarray of N bits and sets to 1 only those indices that coincides with
+    the integers in the numpy array.
+
+    Arguments:
+        np_array (numpy.array): numpy array.
+        N (int): size of the desired bitarray.
+    Return:
+        bitarr (bitarray): a bitarray of N bits having as 1 only those indices
+        that coincides with the integers present in the numpy array.
+    '''
+    zero_arr = np.zeros(N, dtype=np.bool)
+    zero_arr[np_array] = 1
+    bitarr = ba()
+    bitarr.pack(zero_arr.tobytes())
+    return bitarr
+
+
 def calc_rmsd_matrix(trajectory, args):
     '''
     DESCRIPTION
@@ -129,39 +144,37 @@ def calc_rmsd_matrix(trajectory, args):
         trajectory (mdtraj.Trajectory): trajectory object to analyze.
         args (argparse.Namespace): user input parameters parsed by argparse.
     Return:
-        matrix (collections.OrderedDict): dict of bitarrays
+        matrix (list): list of bitarrays
         degrees (collections.OrderedDict): dict of bitarrays´ lenghts.
     '''
-
     trajectory.center_coordinates()
+    N = trajectory.n_frames
     cutoff = np.float32(args.cutoff)/10  # transform A to nm (MDTraj coherence)
-    matrix = OrderedDict()
+    matrix = []
     degrees = OrderedDict()
-    to_explore = range(trajectory.n_frames)
+    to_explore = range(N)
     for i in to_explore:
         rmsd_ = md.rmsd(trajectory, trajectory, i, precentered=True)
-#       closes = np.isclose(rmsd_, threshold, atol=1e-15, rtol=1e-15)
-#       rounderrors = np.where(closes)[0]
         vector_np = np.less_equal(rmsd_, cutoff)
-#       vector_np[rounderrors] = True
-        matrix.update({i: ba(list(vector_np))})
-        degrees.update({i: vector_np.sum()})
+        bitarr = np_to_bitarray(vector_np, N)
+        matrix.append(bitarr)
+        degrees.update({i: bitarr.count()})
     return matrix, degrees
 
 
-# @profile
-def bitclusterize(matrix, degrees):
+def bitclusterize(matrix, degrees, args):
     '''
     DESCRIPTION
-    Clusters bit matrix using bitwise operations.
+    Clusters the bit matrix using bitwise operations.
 
     Args:
-        matrix (collections.OrderedDict): dict of bitarrays
+        matrix (list): list of bitarrays
         degrees (collections.OrderedDict): dict of bitarrays lenghts.
     Return:
         clusters (numpy.ndarray): array of clusters ID.
         leaders (list) : list of clusters´ centers ID.
     '''
+    degrees = np.asarray([degrees[x] for x in degrees])
     # Memory allocation for clusters container --------------------------------
     clusters = np.empty(len(matrix), dtype='int32')
     clusters.fill(-1)
@@ -173,34 +186,33 @@ def bitclusterize(matrix, degrees):
     clust_id = 0
     while True:
         # Find the biggest cluster --------------------------------------------
-        leader = max(degrees.items(), key=lambda x: x[1])[0]
+        leader = degrees.argmax()
         biggest_cluster = matrix[leader] & available_bits
-#        biggest_cluster = matrix[leader] # testing!!!
+        biggest_cluster_list = np.frombuffer(biggest_cluster.unpack(),
+                                             dtype=np.bool)
+        degrees[biggest_cluster_list] = 0
         available_bits = (available_bits ^ biggest_cluster) & available_bits
         leaders.append(leader)
         # Break 1: all candidates cluster have degree 1 (can´t clusterize) ----
-        if (len(set(degrees.values())) == 1) and \
-                (list(degrees.values())[0] == 1):
+        if degrees.sum() == np.nonzero(degrees)[0].size:
             return clusters, leaders
             break
-        # Prune biggest cluster and its members from matrix -------------------
-        discard = biggest_cluster.search(ba('1'))
-        clusters[discard] = clust_id
-        for element in discard:
-            del degrees[element]
+        # Break 2: all candidates cluster have degree < minsize ---------------
+        if biggest_cluster_list.sum() < args.minsize:
+            return clusters, leaders
+            break
         # Assign next cluster ID ----------------------------------------------
+        clusters[biggest_cluster_list] = clust_id
         clust_id += 1
         # Update degrees of unclustered frames --------------------------------
-        degrees_list = list(degrees.keys())
-        for degree in degrees_list:
+        for degree in available_bits.itersearch(ba('1')):
             degrees[degree] = ba.fast_hw_and(available_bits, matrix[degree])
-        # Break 2: No more candidates available (empty matrix) ----------------
-        if not degrees:
+        # Break 3: No more candidates available (empty matrix) ----------------
+        if degrees.sum() == 0:
             return clusters, leaders
             break
 
 
-# @profile
 def calc_rms_vectors(trajectory, args):
     '''
     DESCRIPTION
@@ -209,30 +221,26 @@ def calc_rms_vectors(trajectory, args):
         trajectory (mdtraj.Trajectory): trajectory object to analyze.
         args (argparse.Namespace): user input parameters parsed by argparse.
     Return:
-        matrix (collections.OrderedDict): dict of bitarrays
-        degrees (collections.OrderedDict): dict of bitarrays´ lenghts.
+        rmsd_ (list): list containing the RMSD of all frames vs. reference.
     '''
-
     trajectory.center_coordinates()
     reference = args.reference
     rmsd_ = md.rmsd(trajectory, trajectory, reference, precentered=True)
-#    rmsf_ = md.rmsf(trajectory, trajectory, reference, precentered=True)
-#    return rmsd_, rmsf_
     return rmsd_
 
 
-def get_frames_stats(clusters, leaders):
+def get_frames_stats(clusters, rmsd_):
     '''
     DESCRIPTION
     Gets plain text file "frames_statistics.txt" which contains as columns:
-    frameID, clusterID and RMSD distance.
+    frameID, clusterID and RMSD distance with respect to reference.
 
     Args:
-        clusters
-        leaders
-        rmsd_
+        clusters (numpy.ndarray): array of clusters ID.
+        rmsd_ (list): list containing the RMSD of all frames vs. reference.
+
     Return:
-        frames_df
+        frames_df (pandas.DataFrame): dataframe with frames_statistics info.
     '''
     out_name = 'frames_statistics.txt'
     frames_df = pd.DataFrame(columns=['frame', 'cluster_id', 'rmsd'])
@@ -247,30 +255,34 @@ def get_frames_stats(clusters, leaders):
 def get_cluster_stats(clusters, leaders):
     '''
     DESCRIPTION
+    Gets plain text file "cluster_statistics.txt" which contains as columns:
+    clusterID, cluster_size, cluster_leader and cluster percentage from
+    trajectory.
+
     Args:
+        clusters (numpy.ndarray): array of clusters ID.
+        leaders (list) : list of clusters´ centers ID.
+
     Return:
+        clusters_df (pandas.DataFrame): dataframe with cluster_statistics info.
     '''
     out_name = 'cluster_statistics.txt'
     clusters_df = pd.DataFrame(columns=['cluster_id', 'size', 'leader',
                                         'percent'])
-    clusters_df['cluster_id'] = range(-1, len(leaders)-1)
-    leaders.insert(0, leaders[-1])
-    leaders.pop()
+    clusters_df['cluster_id'] = range(0, len(leaders))
     clusters_df['leader'] = leaders
-    sizes = []
 
-    if -1 in leaders:
-        for x in range(-1, len(leaders)-1):
-            sizes.append(len(np.where(clusters == x)[0]))
-    else:
-        for x in range(0, len(leaders)):
-            sizes.append(len(np.where(clusters == x)[0]))
+    sizes = []
+    for x in range(0, len(leaders)):
+        sizes.append(len(np.where(clusters == x)[0]))
+    sizes[-1] = len(np.where(clusters == -1)[0])
 
     clusters_df['size'] = sizes
     sum_ = sum(sizes)
 
     percents = [round(x/sum_*100, 4) for x in sizes]
     clusters_df['percent'] = percents
+
     with open(out_name, 'wt') as on:
         clusters_df.to_string(buf=on, index=False)
     return clusters_df
@@ -281,7 +293,7 @@ def generic_matplotlib():
     DESCRIPTION
     Some customizations of matplotlib.
     '''
-    mpl.rc('figure', autolayout=True, figsize=[3.33, 2.5], dpi=300)
+    mpl.rc('figure', autolayout=True, figsize=[7, 5], dpi=300)
     mpl.rc('font', family='STIXGeneral')
     mpl.rc('lines', markersize=2)
     mpl.rc('mathtext', fontset='stix')
@@ -298,7 +310,8 @@ def generic_matplotlib():
     mpl.rc('ytick.minor', right=True, visible=False)
 
 
-if __name__ == '__main__':
+def main():
+
     # ---- Load user arguments ------------------------------------------------
     inputs = parse_arguments()
     sms = '\n\n ATTENTION !!! No trajectory passed.Run with -h for help.'
@@ -309,20 +322,24 @@ if __name__ == '__main__':
     # ---- Stage 2: Calculate RMSD matrix -------------------------------------
     matrix, degrees = calc_rmsd_matrix(trajectory, inputs)
     # ---- Stage 3: Bitwise clustering ----------------------------------------
-    clusters, leaders = bitclusterize(matrix, degrees)
+    clusters, leaders = bitclusterize(matrix, degrees, inputs)
     rmsd_ = calc_rms_vectors(trajectory, inputs)
-    # --- Stage 4: Analysis ---------------------------------------------------
+
+    # # --- Stage 4: Analysis -------------------------------------------------
     if inputs.outdir == './':
         pass
     else:
-        os.makedirs(inputs.outdir)
-        os.chdir(inputs.outdir)
-    frames_stats = get_frames_stats(clusters, leaders)
+        try:
+            os.makedirs(inputs.outdir)
+            os.chdir(inputs.outdir)
+        except FileExistsError:
+            shutil.rmtree(inputs.outdir)
+            os.makedirs(inputs.outdir)
+            os.chdir(inputs.outdir)
+    frames_stats = get_frames_stats(clusters, rmsd_)
     clusters_stats = get_cluster_stats(clusters, leaders)
 
-    # =========================================================================
     # graph 1: rmsd_vs_reference (A)
-    # =========================================================================
     generic_matplotlib()
     mpl.rc('figure', autolayout=True, figsize=[7, 3.5], dpi=300)
     mpl.rc('xtick', labelsize=18, direction='out', top=False)
@@ -336,9 +353,7 @@ if __name__ == '__main__':
                 alpha=0.85)
     plt.close()
 
-    # =========================================================================
     # graph 2: clusterlines
-    # =========================================================================
     generic_matplotlib()
     plt.ylabel('Cluster ID', fontsize=14)
     plt.xlabel('Frame ID', fontsize=14)
@@ -347,25 +362,21 @@ if __name__ == '__main__':
     plt.savefig('clusters_lines', dpi=300, bbox_inches='tight')
     plt.close()
 
-    # =========================================================================
     # graph 3: clustersizes
-    # =========================================================================
     generic_matplotlib()
     plt.ylabel('Cluster size (%)', fontsize=14)
     plt.xlabel('Cluster ID', fontsize=14)
     plt.ylim(-1, clusters_stats['percent'].max()+5)
     plt.bar(clusters_stats.cluster_id,
             clusters_stats['percent'], color='k', width=0.8, alpha=0.85)
-
-    plt.bar(clusters_stats.cluster_id[0], clusters_stats['percent'][0],
-            color='r', width=0.8, label='Outliers', alpha=1)
+    plt.bar(clusters_stats.cluster_id.iloc[-1],
+            clusters_stats['percent'].iloc[-1],
+            color='r', width=0.8, label='Unclustered', alpha=1)
     plt.legend(loc='upper right')
     plt.savefig('clusters_sizes', dpi=300, bbox_inches='tight')
     plt.close()
 
-    # =========================================================================
     # graph 4: coloRMSD colored by clusters
-    # =========================================================================
     generic_matplotlib()
     mpl.rc('figure', autolayout=True, figsize=[7, 3.5], dpi=300)
     mpl.rc('xtick', labelsize=18, direction='out', top=False)
@@ -385,7 +396,7 @@ if __name__ == '__main__':
     plt.savefig('rmsd_all_vs_reference_colored', dpi=300)
     plt.close()
 
-    # only for article publication
-    # run('mogrify -resize 2100x1050 -density 300 -units PixelsPerInch
-    # rmsd_all_vs_reference_colored.png', shell=True)
     print('\n\n\nNORMAL TERMINATION :)')
+
+if __name__ == '__main__':
+    main()

@@ -2,7 +2,7 @@ Installation
 ============
 
 **MDTraj**
-----------
+==========
 
 Before installing **BitClust**, please be sure that ``mdtraj`` is available
 in your system. It is recommended that you install ``mdtraj`` using conda. ::
@@ -28,15 +28,28 @@ is available `here <https://pip.pypa.io/en/stable/>`_
 
 
 **BitClust**
-------------
+============
+
+Via **pip**
+-----------
 
 After succesful installation of ``mdtraj`` you can easily proceed to
 install **BitClust** and the rest of its dependencies using pip. ::
 
   $ pip install bitclust
 
-Now you should be able to see **BitClust** help by typing in a console: ::
+Then, you should be able to see **BitClust** help by typing in a console: ::
 
-  $ bitclust-cli.py -h
+  $ bitclust -h
 
+
+Via **GitHub**
+--------------
+
+After succesful installation of ``mdtraj`` you can easily proceed to
+install **BitClust** and the rest of its dependencies from GitHub. ::
+
+  $ git clone https://github.com/rglez/bitclust
+  $ cd bitclust
+  $ python setup.py install
 
