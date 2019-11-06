@@ -146,6 +146,7 @@ Next, you will find some usage examples of **BitClust**.
 
 
 ::
+
  # Clustering all atoms but hydrogen´ ones.
  
  $ bitclust.py -top tau_6K.pdb -traj tau_6K.dcd -sel "\"name =~ '[^H.*]'\"" 
