@@ -79,11 +79,11 @@ def parse_arguments():
 
 # Debuging jobs can start from here
 # args = argparse.Namespace
-# args.topology = './examples/aligned_tau.pdb'
-# args.trajectory = './examples/aligned_original_tau_6K.dcd'
+# args.topology =
+# args.trajectory = '/home/rga/Desktop/javierClust/ready_pr.pdb'
 # args.selection = 'all'
 # args.cutoff = 4
-# args.minsize = 50
+# args.minsize = 2
 # args.reference = 0
 # args.outdir = './out'
 
@@ -192,7 +192,18 @@ def bitclusterize(matrix, degrees, args):
                                              dtype=np.bool)
         degrees[biggest_cluster_list] = 0
         available_bits = (available_bits ^ biggest_cluster) & available_bits
-        leaders.append(leader)
+        if biggest_cluster.count() <= 1:
+            leaders.append(-1)
+            return clusters, leaders
+            break
+        else:
+            leaders.append(leader)
+            # Assign next cluster ID ----------------------------------------------
+            clusters[biggest_cluster_list] = clust_id
+            clust_id += 1
+        # Update degrees of unclustered frames --------------------------------
+        for degree in available_bits.itersearch(ba('1')):
+            degrees[degree] = ba.fast_hw_and(available_bits, matrix[degree])
         # Break 1: all candidates cluster have degree 1 (can´t clusterize) ----
         if degrees.sum() == np.nonzero(degrees)[0].size:
             return clusters, leaders
@@ -201,12 +212,6 @@ def bitclusterize(matrix, degrees, args):
         if biggest_cluster_list.sum() < args.minsize:
             return clusters, leaders
             break
-        # Assign next cluster ID ----------------------------------------------
-        clusters[biggest_cluster_list] = clust_id
-        clust_id += 1
-        # Update degrees of unclustered frames --------------------------------
-        for degree in available_bits.itersearch(ba('1')):
-            degrees[degree] = ba.fast_hw_and(available_bits, matrix[degree])
         # Break 3: No more candidates available (empty matrix) ----------------
         if degrees.sum() == 0:
             return clusters, leaders
@@ -275,7 +280,8 @@ def get_cluster_stats(clusters, leaders):
     sizes = []
     for x in range(0, len(leaders)):
         sizes.append(len(np.where(clusters == x)[0]))
-    sizes[-1] = len(np.where(clusters == -1)[0])
+    if len(np.where(clusters == -1)[0]):
+        sizes.append(len(np.where(clusters == -1)[0]))
 
     clusters_df['size'] = sizes
     sum_ = sum(sizes)
@@ -336,6 +342,8 @@ def main():
             shutil.rmtree(inputs.outdir)
             os.makedirs(inputs.outdir)
             os.chdir(inputs.outdir)
+
+    # log files
     frames_stats = get_frames_stats(clusters, rmsd_)
     clusters_stats = get_cluster_stats(clusters, leaders)
 
@@ -396,7 +404,7 @@ def main():
     plt.savefig('rmsd_all_vs_reference_colored', dpi=300)
     plt.close()
 
-    print('\n\n\nNORMAL TERMINATION :)')
+    print('\n\n\nNORMAL TERMINATION ;)')
 
 if __name__ == '__main__':
     main()
