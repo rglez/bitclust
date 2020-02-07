@@ -32,7 +32,7 @@ specified they will take their default values commented below.
  
 A minimal run like ::
 
- $ bitclust.py -top tau_6K.pdb -traj tau_6K.dcd 
+ $ bitclust -top tau_6K.pdb -traj tau_6K.dcd 
  
 loads the tau_6K.dcd trajectory into tau_6K.pdb coordinates (both present at
 current working directory as not path was provided) and performs a clustering job using Daura’s algorithm
@@ -142,14 +142,14 @@ Next, you will find some usage examples of **BitClust**.
  # An interval (1000 frames) of tau_6K.pdb trajectory (no topology file is needed)
  # will be clustered with default values for all other arguments (see help section).
    
- $ bitclust.py  -traj tau_6K.pdb -first 0 -last 100000 -stride 100
+ $ bitclust  -traj tau_6K.pdb -first 0 -last 100000 -stride 100
 
 
 ::
 
  # Clustering all atoms but hydrogen´ ones.
  
- $ bitclust.py -top tau_6K.pdb -traj tau_6K.dcd -sel "\"name =~ '[^H.*]'\"" 
+ $ bitclust -top tau_6K.pdb -traj tau_6K.dcd -sel "\"name =~ '[^H.*]'\"" 
 
 
 ::
@@ -158,12 +158,12 @@ Next, you will find some usage examples of **BitClust**.
  # Retrieved clusters will have at least 15 frames and output RMSD graphs will use
  # frame 2580 (counting from 0) as a reference structure. 
 
- $ bitclust.py -top tau_6K.pdb -traj tau_6K.dcd -sel "backbone" -cutoff 4 -minsize 15 -ref 2580
+ $ bitclust -top tau_6K.pdb -traj tau_6K.dcd -sel "backbone" -cutoff 4 -minsize 15 -ref 2580
 
 
 ::
 
  # Default run saving results to local/test/run1 (relative path to current working directory)
 
- $ bitclust.py  -traj tau_6K.pdb -odir "local/test/run1"
+ $ bitclust  -traj tau_6K.pdb -odir "local/test/run1"
 
