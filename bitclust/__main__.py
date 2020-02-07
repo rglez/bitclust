@@ -278,10 +278,13 @@ def get_cluster_stats(clusters, leaders):
     clusters_df['leader'] = leaders
 
     sizes = []
-    for x in range(0, len(leaders)):
-        sizes.append(len(np.where(clusters == x)[0]))
-    if len(np.where(clusters == -1)[0]):
+    if (len(leaders) == 1) and leaders[0] == -1:
         sizes.append(len(np.where(clusters == -1)[0]))
+    else:
+        for x in range(0, len(leaders)):
+            sizes.append(len(np.where(clusters == x)[0]))
+        if len(np.where(clusters == -1)[0]):
+            sizes.append(len(np.where(clusters == -1)[0]))
 
     clusters_df['size'] = sizes
     sum_ = sum(sizes)
