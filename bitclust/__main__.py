@@ -274,24 +274,28 @@ def get_cluster_stats(clusters, leaders):
     out_name = 'cluster_statistics.txt'
     clusters_df = pd.DataFrame(columns=['cluster_id', 'size', 'leader',
                                         'percent'])
-    clusters_df['cluster_id'] = range(0, len(leaders))
-    clusters_df['leader'] = leaders
 
-    sizes = []
-    if (len(leaders) == 1) and leaders[0] == -1:
-        sizes.append(len(np.where(clusters == -1)[0]))
-    else:
-        for x in range(0, len(leaders)):
+    # treatment in case of outliers
+    if len(np.where(clusters == -1)[0]):
+        leaders = leaders + [-1]
+        clusters_df['leader'] = leaders
+        clusters_df['cluster_id'] = list(range(0, len(leaders) - 1)) + [-1]
+        sizes = []
+        for x in clusters_df.cluster_id:
             sizes.append(len(np.where(clusters == x)[0]))
-        if len(np.where(clusters == -1)[0]):
-            sizes.append(len(np.where(clusters == -1)[0]))
+        clusters_df['size'] = sizes
+    # treatment in case of non outliers
+    else:
+        clusters_df['leader'] = leaders
+        clusters_df['cluster_id'] = list(range(0, len(leaders)))
+        sizes = []
+        for x in clusters_df.cluster_id:
+            sizes.append(len(np.where(clusters == x)[0]))
+        clusters_df['size'] = sizes
 
-    clusters_df['size'] = sizes
-    sum_ = sum(sizes)
-
-    percents = [round(x/sum_*100, 4) for x in sizes]
+    sum_ = clusters_df['size'].sum()
+    percents = [round(x/sum_*100, 4) for x in clusters_df['size']]
     clusters_df['percent'] = percents
-
     with open(out_name, 'wt') as on:
         clusters_df.to_string(buf=on, index=False)
     return clusters_df
