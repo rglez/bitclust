@@ -4,13 +4,14 @@
 .. note ::
 
   | **Author      :** Roy Gonzalez Aleman
-  | **Contact     :** [roy_gonzalez@fq.uh.cu, roy.gonzalez.aleman@gmail.com]
+  | **Contact     :** [roy_gonzalez@fq.uh.cu, roy.gonzalez-aleman@u-psud.fr]
 
 **Description:**
   'BitClust: Fast & memory efficient clustering of MD trajectories'
 
 '''
 import os
+import sys
 import shutil
 import argparse
 import numpy as np
@@ -20,8 +21,8 @@ import matplotlib.pyplot as plt
 from collections import OrderedDict
 
 import mdtraj as md
+import bitarray.util as bau
 from bitarray import bitarray as ba
-
 
 def parse_arguments():
     '''
@@ -49,7 +50,7 @@ def parse_arguments():
                         type=int, required=False, default=0)
     parser.add_argument('-last', dest='last', action='store',
                         help='last frame to analyze (starting from 0)',
-                        type=int, required=False, default=-1)
+                        type=int, required=False, default=None)
     parser.add_argument('-stride', dest='stride', action='store',
                         help='stride of frames to analyze',
                         type=int, required=False, default=1)
@@ -64,11 +65,17 @@ def parse_arguments():
     parser.add_argument('-minsize', action='store', dest='minsize',
                         help='minimum number of frames inside returned clusters',
                         type=int, required=False, default=2)
+    parser.add_argument('-max_clust', action='store', dest='max_clust',
+                        help='maximum number of returned clusters',
+                        type=int, required=False, default=np.inf)
     parser.add_argument('-ref', action='store', dest='reference',
                         help='reference frame to align trajectory',
                         type=int, required=False, default=0)
 
     # Arguments: analysis -----------------------------------------------------
+    parser.add_argument('-numouts', action='store', dest='num_outs',
+                        help='number of clusters and leaders to print as pdb',
+                        type=int, required=False, default=5)
     parser.add_argument('-odir', action='store', dest='outdir',
                         help='output directory to store analysis',
                         type=str, required=False, default='./')
@@ -78,15 +85,17 @@ def parse_arguments():
 
 
 # Debuging jobs can start from here
-# args = argparse.Namespace
-# args.topology =
-# args.trajectory = '/home/rga/Desktop/javierClust/ready_pr.pdb'
+# args = argparse.Namespace()
+# args.topology = 'examples/aligned_tau.pdb'
+# args.trajectory = 'examples/aligned_original_tau_6K.dcd'
 # args.selection = 'all'
 # args.cutoff = 4
 # args.minsize = 2
 # args.reference = 0
 # args.outdir = './out'
-
+# args.first = 0
+# args.last = 100
+# args.stride = 1
 
 def load_trajectory(args):
     '''
@@ -100,6 +109,7 @@ def load_trajectory(args):
     Return:
         trajectory (mdtraj.Trajectory): trajectory object for further analysis.
     '''
+
     traj_file = args.trajectory
     traj_ext = traj_file.split('.')[-1]
     # Does trajectory file format need topology ? -----------------------------
@@ -107,10 +117,25 @@ def load_trajectory(args):
         trajectory = md.load(traj_file)
     else:
         trajectory = md.load(traj_file, top=args.topology)
+    orig_traj_idx = range(trajectory.n_frames)
     # Reduce RAM consumption by loading selected atoms only -------------------
-    sel = trajectory.topology.select(args.selection)
-    trajectory = trajectory.atom_slice(sel)
-    return trajectory
+    if args.selection != 'all':
+        try:
+            sel_indx = trajectory.topology.select(args.selection)
+        except ValueError:
+            print('Specified selection is invalid')
+            sys.exit()
+        if sel_indx.size == 0:
+            print('Specified selection in your system corresponds to no atoms')
+            sys.exit()
+        trajectory = trajectory.atom_slice(sel_indx)[args.first: args.last:
+                                                     args.stride]
+    else:
+        trajectory = trajectory[args.first:args.last:args.stride]
+    trajectory_idx = orig_traj_idx[args.first:args.last:args.stride]
+    # Center coordinates of loaded trajectory ---------------------------------
+    trajectory.center_coordinates()
+    return trajectory, trajectory_idx
 
 
 def np_to_bitarray(np_array, N):
@@ -184,30 +209,21 @@ def bitclusterize(matrix, degrees, args):
     # Start iterative switching -----------------------------------------------
     leaders = []
     clust_id = 0
+    ncluster = -1
     while True:
+        ncluster += 1
+        # Break 0: break if max number of cluster was reached -----------------
+        if ncluster > args.max_clust:
+            break
         # Find the biggest cluster --------------------------------------------
         leader = degrees.argmax()
-        biggest_cluster = matrix[leader] & available_bits
-        biggest_cluster_list = np.frombuffer(biggest_cluster.unpack(),
-                                             dtype=np.bool)
-        degrees[biggest_cluster_list] = 0
-        available_bits = (available_bits ^ biggest_cluster) & available_bits
-        if biggest_cluster.count() <= 1:
-            leaders.append(-1)
-            return clusters, leaders
-            break
-        else:
-            leaders.append(leader)
-            # Assign next cluster ID ----------------------------------------------
-            clusters[biggest_cluster_list] = clust_id
-            clust_id += 1
-        # Update degrees of unclustered frames --------------------------------
-        for degree in available_bits.itersearch(ba('1')):
-            degrees[degree] = ba.fast_hw_and(available_bits, matrix[degree])
         # Break 1: all candidates cluster have degree 1 (can´t clusterize) ----
         if degrees.sum() == np.nonzero(degrees)[0].size:
             return clusters, leaders
             break
+        biggest_cluster = matrix[leader] & available_bits
+        biggest_cluster_list = np.frombuffer(biggest_cluster.unpack(),
+                                             dtype=np.bool)
         # Break 2: all candidates cluster have degree < minsize ---------------
         if biggest_cluster_list.sum() < args.minsize:
             return clusters, leaders
@@ -216,6 +232,22 @@ def bitclusterize(matrix, degrees, args):
         if degrees.sum() == 0:
             return clusters, leaders
             break
+        degrees[biggest_cluster_list] = 0
+        available_bits = (available_bits ^ biggest_cluster) & available_bits
+        if biggest_cluster.count() <= 1:
+            leaders.append(-1)
+            return clusters, leaders
+            break
+        else:
+            leaders.append(leader)
+            # Assign next cluster ID ------------------------------------------
+            clusters[biggest_cluster_list] = clust_id
+            clust_id += 1
+        # Update degrees of unclustered frames --------------------------------
+        for degree in available_bits.itersearch(ba('1')):
+            # degrees[degree] = ba.fast_hw_and(available_bits, matrix[degree])
+            degrees[degree] = bau.count_and(available_bits, matrix[degree])
+
 
 
 def calc_rms_vectors(trajectory, args):
@@ -247,13 +279,10 @@ def get_frames_stats(clusters, rmsd_):
     Return:
         frames_df (pandas.DataFrame): dataframe with frames_statistics info.
     '''
-    out_name = 'frames_statistics.txt'
     frames_df = pd.DataFrame(columns=['frame', 'cluster_id', 'rmsd'])
     frames_df['frame'] = range(len(clusters))
     frames_df['cluster_id'] = clusters
     frames_df['rmsd'] = rmsd_*10
-    with open(out_name, 'wt') as on:
-        frames_df.to_string(buf=on, index=False)
     return frames_df
 
 
@@ -271,7 +300,6 @@ def get_cluster_stats(clusters, leaders):
     Return:
         clusters_df (pandas.DataFrame): dataframe with cluster_statistics info.
     '''
-    out_name = 'cluster_statistics.txt'
     clusters_df = pd.DataFrame(columns=['cluster_id', 'size', 'leader',
                                         'percent'])
 
@@ -296,8 +324,6 @@ def get_cluster_stats(clusters, leaders):
     sum_ = clusters_df['size'].sum()
     percents = [round(x/sum_*100, 4) for x in clusters_df['size']]
     clusters_df['percent'] = percents
-    with open(out_name, 'wt') as on:
-        clusters_df.to_string(buf=on, index=False)
     return clusters_df
 
 
@@ -327,18 +353,17 @@ def main():
 
     # ---- Load user arguments ------------------------------------------------
     inputs = parse_arguments()
-    sms = '\n\n ATTENTION !!! No trajectory passed.Run with -h for help.'
+    sms = '\n\n ATTENTION !!!! No trajectory passed.Run with -h for help.'
     assert inputs.trajectory, sms
 
     # ---- Stage 1: Load trajectory -------------------------------------------
-    trajectory = load_trajectory(inputs)
+    trajectory, trajectory_idx = load_trajectory(inputs)
     # ---- Stage 2: Calculate RMSD matrix -------------------------------------
     matrix, degrees = calc_rmsd_matrix(trajectory, inputs)
     # ---- Stage 3: Bitwise clustering ----------------------------------------
     clusters, leaders = bitclusterize(matrix, degrees, inputs)
     rmsd_ = calc_rms_vectors(trajectory, inputs)
 
-    # # --- Stage 4: Analysis -------------------------------------------------
     if inputs.outdir == './':
         pass
     else:
@@ -350,9 +375,35 @@ def main():
             os.makedirs(inputs.outdir)
             os.chdir(inputs.outdir)
 
+    # ---- Stage 4: Output clusters/leaders -----------------------------------
+    nouts = inputs.num_outs
+    for c in range(nouts):
+        clust_out = np.where(clusters == c)[0]
+        if clust_out.size == 0:
+            break
+        traj_out = trajectory[clust_out]
+        clust_name = 'cluster_{}.pdb'.format(c)
+        traj_out.save_pdb(clust_name)
+
+        leader_out = trajectory[leaders[c]]
+        lead_name = 'leader_{}.pdb'.format(c)
+        leader_out.save_pdb(lead_name)
+
+    # # --- Stage 5: Analysis -------------------------------------------------
     # log files
     frames_stats = get_frames_stats(clusters, rmsd_)
     clusters_stats = get_cluster_stats(clusters, leaders)
+    # log files conversion to original indices
+    frames_stats.frame = trajectory_idx
+    if clusters_stats.leader.iloc[-1] == -1:
+        clusters_stats.leader[:-1] = np.asarray(trajectory_idx)[clusters_stats.leader[:-1]]
+    else:
+        clusters_stats.leader = np.asarray(trajectory_idx)[clusters_stats.leader]
+    # writing log files in original indices
+    with open('frames_statistics.txt', 'wt') as on:
+        frames_stats.to_string(buf=on, index=False)
+    with open('cluster_statistics.txt', 'wt') as on:
+        clusters_stats.to_string(buf=on, index=False)
 
     # graph 1: rmsd_vs_reference (A)
     generic_matplotlib()
@@ -372,8 +423,8 @@ def main():
     generic_matplotlib()
     plt.ylabel('Cluster ID', fontsize=14)
     plt.xlabel('Frame ID', fontsize=14)
-    plt.plot(frames_stats.cluster_id, lw=0, marker='+', ms=1, color='k',
-             alpha=0.85)
+    plt.plot(frames_stats.frame, frames_stats.cluster_id, lw=0, marker='+',
+             ms=1, color='k', alpha=0.85)
     plt.savefig('clusters_lines', dpi=300, bbox_inches='tight')
     plt.close()
 

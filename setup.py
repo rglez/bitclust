@@ -16,14 +16,14 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/rglez/bitclust",
     author="Roy González-Alemán",
-    author_email="rglez.developer@gmail.com",
+    author_email="roy.gonzalez-aleman@u-psud.fr",
     classifiers=[
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
     ],
     packages=["bitclust"],
     include_package_data=True,
-    install_requires=["bitarray", "bitarray_ph4", "numpy", "pandas", "matplotlib"],
+    install_requires=["bitarray>=1.2.1", "numpy", "pandas", "matplotlib"],
     entry_points={
         "console_scripts": [
             "bitclust = bitclust.__main__:main",
