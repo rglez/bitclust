@@ -39,7 +39,7 @@ current working directory as not path was provided) and performs a clustering jo
 with a cutoff of 1A (``-cutoff`` 1) on the whole trajectory.
 
 Arguments ``-first``, ``-last`` and ``-stride`` can be used to select an interval
-(they default to 0, last and 1 respectively).
+(they default to 0, last frame and 1 respectively).
 
 Default atom selection corresponds to all atoms (``-sel`` all). **BitClust** will
 retrieve all clusters with at least 2 frames (``-size`` 2).

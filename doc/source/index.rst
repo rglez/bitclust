@@ -21,8 +21,8 @@ then store them in memory instead of recalculating them whenever a cluster is fo
 
 It is worth noting that memory resources have been deeply optimized by encoding similarity distances
 as bits (0 if the distance is less equal than a specified threshold, 1 otherwise).
-This encoding result in a storage reduction of at least 32X when compared to similar
-algorithms that save the same information as single-precision float values.
+This encoding result in a storage reduction of at least 32X/64X when compared to similar
+algorithms that save the same information as single/double-precision float values.
 
 
 Main Dependencies

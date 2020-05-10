@@ -9,24 +9,25 @@ Basic help
 
   usage: bitclust [-h] [-top TOPOLOGY] [-traj TRAJECTORY] [-first FIRST]
                   [-last LAST] [-stride STRIDE] [-sel SELECTION]
-                  [-cutoff CUTOFF] [-minsize MINSIZE] [-ref REFERENCE]
-                  [-odir OUTDIR]
+                  [-cutoff CUTOFF] [-minsize MINSIZE] [-max_clust MAX_CLUST]
+                  [-ref REFERENCE] [-numouts NUM_OUTS] [-odir OUTDIR]
 
   BitClust: Fast & memory efficient clustering of long MD trajectories
 
   optional arguments:
-    -h, --help        show this help message and exit
-    -top TOPOLOGY     path to topology file (psf/pdb)
-    -traj TRAJECTORY  path to trajectory file
-    -first FIRST      first frame to analyze (starting from 0)
-    -last LAST        last frame to analyze (starting from 0)
-    -stride STRIDE    stride of frames to analyze
-    -sel SELECTION    atom selection (MDTraj syntax)
-    -cutoff CUTOFF    RMSD cutoff for pairwise comparisons in A
-    -minsize MINSIZE  minimum number of frames inside returned clusters
-    -ref REFERENCE    reference frame to align trajectory
-    -odir OUTDIR      output directory to store analysis
-
+    -h, --help            show this help message and exit
+    -top TOPOLOGY         path to topology file (psf/pdb)
+    -traj TRAJECTORY      path to trajectory file
+    -first FIRST          first frame to analyze (starting from 0)
+    -last LAST            last frame to analyze (starting from 0)
+    -stride STRIDE        stride of frames to analyze
+    -sel SELECTION        atom selection (MDTraj syntax)
+    -cutoff CUTOFF        RMSD cutoff for pairwise comparisons in A
+    -minsize MINSIZE      minimum number of frames inside returned clusters
+    -max_clust MAX_CLUST  maximum number of returned clusters
+    -ref REFERENCE        reference frame to align trajectory
+    -numouts NUM_OUTS     number of clusters and leaders to print as pdb
+    -odir OUTDIR          output directory to store analysis
 
 
 Arguments details
@@ -63,7 +64,13 @@ are listed at usage examples section.
 0 is not a meaningful value and 1 implies an unclustered frame (no other frame is
 similar to it). Greater values of this parameter can speed up the algorithm.
 
+``-max_clust (int, default=all):`` Maximum number of calculated clusters. Change the default
+for a better performance whenever you need only the first clusters.
+
 ``-ref (int, default=0):`` Reference frame to align trajectory.
+
+``-numouts (int, default=5):`` Number of clusters and their corresponding representative frames
+(leaders) to print as pdb.
 
 ``-odir (str, default="."):`` Output directory to store analysis. If not specified,
 files and figs will be stored in current working directory.
