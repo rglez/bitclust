@@ -96,6 +96,7 @@ def parse_arguments():
 # args.first = 0
 # args.last = 100
 # args.stride = 1
+# args.max_clust = 10
 
 def load_trajectory(args):
     '''
@@ -219,24 +220,24 @@ def bitclusterize(matrix, degrees, args):
         leader = degrees.argmax()
         # Break 1: all candidates cluster have degree 1 (can´t clusterize) ----
         if degrees.sum() == np.nonzero(degrees)[0].size:
-            return clusters, leaders
+            # return clusters, leaders
             break
         biggest_cluster = matrix[leader] & available_bits
         biggest_cluster_list = np.frombuffer(biggest_cluster.unpack(),
                                              dtype=np.bool)
         # Break 2: all candidates cluster have degree < minsize ---------------
         if biggest_cluster_list.sum() < args.minsize:
-            return clusters, leaders
+            # return clusters, leaders
             break
         # Break 3: No more candidates available (empty matrix) ----------------
         if degrees.sum() == 0:
-            return clusters, leaders
+            # return clusters, leaders
             break
         degrees[biggest_cluster_list] = 0
         available_bits = (available_bits ^ biggest_cluster) & available_bits
         if biggest_cluster.count() <= 1:
             leaders.append(-1)
-            return clusters, leaders
+            # return clusters, leaders
             break
         else:
             leaders.append(leader)
@@ -247,7 +248,7 @@ def bitclusterize(matrix, degrees, args):
         for degree in available_bits.itersearch(ba('1')):
             # degrees[degree] = ba.fast_hw_and(available_bits, matrix[degree])
             degrees[degree] = bau.count_and(available_bits, matrix[degree])
-
+    return clusters, leaders
 
 
 def calc_rms_vectors(trajectory, args):
@@ -462,7 +463,7 @@ def main():
     plt.savefig('rmsd_all_vs_reference_colored', dpi=300)
     plt.close()
 
-    print('\n\n\nNORMAL TERMINATION ;)')
+    print('\n\n\nNORMAL TERMINATION :J')
 
 if __name__ == '__main__':
     main()
