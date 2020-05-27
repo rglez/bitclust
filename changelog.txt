@@ -1,3 +1,7 @@
+Version 0.0.12 (10/05/2020)
+===========================
+* Hotfix targeting a bug in -max_clust option definition
+
 Version 0.0.11 (10/05/2020)
 ===========================
 
