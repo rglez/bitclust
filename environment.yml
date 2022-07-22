@@ -1,4 +1,4 @@
-name: qt
+name: bitqt
 channels:
   - defaults
   - conda-forge
