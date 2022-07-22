@@ -10,3 +10,4 @@ dist
 docs
 *egg*
 /docs
+.idea/*
