@@ -1,4 +1,4 @@
-name: bitqt
+name: bitclust
 channels:
   - defaults
   - conda-forge
@@ -9,6 +9,6 @@ dependencies:
   - pandas
   - matplotlib
   - mdtraj
-  - bitarray
+  - bitarray==1.6.1
 
 
