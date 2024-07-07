@@ -153,7 +153,7 @@ def np_to_bitarray(np_array, N):
         bitarr (bitarray): a bitarray of N bits having as 1 only those indices
         that coincides with the integers present in the numpy array.
     '''
-    zero_arr = np.zeros(N, dtype=np.bool)
+    zero_arr = np.zeros(N, dtype=bool)
     zero_arr[np_array] = 1
     bitarr = ba()
     bitarr.pack(zero_arr.tobytes())
@@ -224,7 +224,7 @@ def bitclusterize(matrix, degrees, args):
             break
         biggest_cluster = matrix[leader] & available_bits
         biggest_cluster_list = np.frombuffer(biggest_cluster.unpack(),
-                                             dtype=np.bool)
+                                             dtype=bool)
         # Break 2: all candidates cluster have degree < minsize ---------------
         if biggest_cluster_list.sum() < args.minsize:
             # return clusters, leaders
@@ -416,8 +416,7 @@ def main():
     colors = ['r', 'orange', 'green', 'blue', 'purple']
     plt.scatter(frames_stats.frame, frames_stats.rmsd, marker='x', s=8,
                 color='gray', alpha=1, label='RMSD vs. reference')
-    plt.savefig('rmsd_all_vs_reference', dpi=300,
-                alpha=0.85)
+    plt.savefig('rmsd_all_vs_reference', dpi=300)
     plt.close()
 
     # graph 2: clusterlines
