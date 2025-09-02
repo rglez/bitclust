@@ -10,19 +10,20 @@
   'BitClust: Fast & memory efficient clustering of MD trajectories'
 
 '''
-import os
-import sys
-import shutil
 import argparse
-import numpy as np
-import pandas as pd
-import matplotlib as mpl
-import matplotlib.pyplot as plt
+import os
+import shutil
+import sys
 from collections import OrderedDict
 
-import mdtraj as md
 import bitarray.util as bau
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import mdtraj as md
+import numpy as np
+import pandas as pd
 from bitarray import bitarray as ba
+
 
 def parse_arguments():
     '''
@@ -45,7 +46,7 @@ def parse_arguments():
     parser.add_argument('-traj', dest='trajectory', action='store',
                         help='path to trajectory file',
                         type=str)
-    parser.add_argument('-first', dest='first',  action='store',
+    parser.add_argument('-first', dest='first', action='store',
                         help='first frame to analyze (starting from 0)',
                         type=int, required=False, default=0)
     parser.add_argument('-last', dest='last', action='store',
@@ -97,9 +98,8 @@ def parse_arguments():
 # args.last = 100
 # args.stride = 1
 # args.max_clust = 10
-
 def load_trajectory(args):
-    '''
+    """
     DESCRIPTION
     Loads trajectory file using MDTraj. If trajectory format is h5, lh5 or
     pdb, topology file is not required. Otherwise, you should specify a
@@ -109,10 +109,10 @@ def load_trajectory(args):
         args (argparse.Namespace): user input parameters parsed by argparse.
     Return:
         trajectory (mdtraj.Trajectory): trajectory object for further analysis.
-    '''
+    """
 
-    traj_file = args.trajectory
-    traj_ext = traj_file.split('.')[-1]
+    traj_file = [x.strip() for x in args.trajectory.split(',')]
+    traj_ext = traj_file[0].split('.')[-1]
     # Does trajectory file format need topology ? -----------------------------
     if traj_ext in ['h5', 'lh5', 'pdb']:
         trajectory = md.load(traj_file)
@@ -120,19 +120,19 @@ def load_trajectory(args):
         trajectory = md.load(traj_file, top=args.topology)
     orig_traj_idx = range(trajectory.n_frames)
     # Reduce RAM consumption by loading selected atoms only -------------------
-    if args.selection != 'all':
-        try:
-            sel_indx = trajectory.topology.select(args.selection)
-        except ValueError:
-            print('Specified selection is invalid')
-            sys.exit()
-        if sel_indx.size == 0:
-            print('Specified selection in your system corresponds to no atoms')
-            sys.exit()
-        trajectory = trajectory.atom_slice(sel_indx)[args.first: args.last:
-                                                     args.stride]
-    else:
-        trajectory = trajectory[args.first:args.last:args.stride]
+    # if args.selection != 'all':
+    #     try:
+    #         sel_indx = trajectory.topology.select(args.selection)
+    #     except ValueError:
+    #         print('Specified selection is invalid')
+    #         sys.exit()
+    #     if sel_indx.size == 0:
+    #         print('Specified selection in your system corresponds to no atoms')
+    #         sys.exit()
+    #     trajectory = trajectory.atom_slice(sel_indx)[args.first: args.last:
+    #                                                  args.stride]
+    # else:
+    trajectory = trajectory[args.first:args.last:args.stride]
     trajectory_idx = orig_traj_idx[args.first:args.last:args.stride]
     # Center coordinates of loaded trajectory ---------------------------------
     trajectory.center_coordinates()
@@ -175,7 +175,8 @@ def calc_rmsd_matrix(trajectory, args):
     '''
     trajectory.center_coordinates()
     N = trajectory.n_frames
-    cutoff = np.float32(args.cutoff)/10  # transform A to nm (MDTraj coherence)
+    cutoff = np.float32(
+        args.cutoff) / 10  # transform A to nm (MDTraj coherence)
     matrix = []
     degrees = OrderedDict()
     to_explore = range(N)
@@ -283,7 +284,7 @@ def get_frames_stats(clusters, rmsd_):
     frames_df = pd.DataFrame(columns=['frame', 'cluster_id', 'rmsd'])
     frames_df['frame'] = range(len(clusters))
     frames_df['cluster_id'] = clusters
-    frames_df['rmsd'] = rmsd_*10
+    frames_df['rmsd'] = rmsd_ * 10
     return frames_df
 
 
@@ -323,7 +324,7 @@ def get_cluster_stats(clusters, leaders):
         clusters_df['size'] = sizes
 
     sum_ = clusters_df['size'].sum()
-    percents = [round(x/sum_*100, 4) for x in clusters_df['size']]
+    percents = [round(x / sum_ * 100, 4) for x in clusters_df['size']]
     clusters_df['percent'] = percents
     return clusters_df
 
@@ -351,7 +352,6 @@ def generic_matplotlib():
 
 
 def main():
-
     # ---- Load user arguments ------------------------------------------------
     inputs = parse_arguments()
     sms = '\n\n ATTENTION !!!! No trajectory passed.Run with -h for help.'
@@ -397,9 +397,11 @@ def main():
     # log files conversion to original indices
     frames_stats.frame = trajectory_idx
     if clusters_stats.leader.iloc[-1] == -1:
-        clusters_stats.leader[:-1] = np.asarray(trajectory_idx)[clusters_stats.leader[:-1]]
+        clusters_stats.leader[:-1] = np.asarray(trajectory_idx)[
+            clusters_stats.leader[:-1]]
     else:
-        clusters_stats.leader = np.asarray(trajectory_idx)[clusters_stats.leader]
+        clusters_stats.leader = np.asarray(trajectory_idx)[
+            clusters_stats.leader]
     # writing log files in original indices
     with open('frames_statistics.txt', 'wt') as on:
         frames_stats.to_string(buf=on, index=False)
@@ -432,7 +434,7 @@ def main():
     generic_matplotlib()
     plt.ylabel('Cluster size (%)', fontsize=14)
     plt.xlabel('Cluster ID', fontsize=14)
-    plt.ylim(-1, clusters_stats['percent'].max()+5)
+    plt.ylim(-1, clusters_stats['percent'].max() + 5)
     plt.bar(clusters_stats.cluster_id,
             clusters_stats['percent'], color='k', width=0.8, alpha=0.85)
     plt.bar(clusters_stats.cluster_id.iloc[-1],
@@ -456,13 +458,14 @@ def main():
         frames = frames_stats[frames_stats.cluster_id == i].frame
         rms = frames_stats[frames_stats.cluster_id == i].rmsd
         plt.scatter(frames, rms, color=c, marker='+', s=8, alpha=0.5,
-                    label='Clust-{}'.format(i+1))
+                    label='Clust-{}'.format(i + 1))
         plt.legend(bbox_to_anchor=(0.95, 1), markerscale=5,
                    fontsize='xx-large')
     plt.savefig('rmsd_all_vs_reference_colored', dpi=300)
     plt.close()
 
     print('\n\n\nNORMAL TERMINATION :J')
+
 
 if __name__ == '__main__':
     main()
