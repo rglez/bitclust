@@ -382,9 +382,9 @@ def main():
         clust_out = np.where(clusters == c)[0]
         if clust_out.size == 0:
             break
-        traj_out = trajectory[clust_out]
-        clust_name = 'cluster_{}.pdb'.format(c)
-        traj_out.save_pdb(clust_name)
+        # traj_out = trajectory[clust_out]
+        # clust_name = 'cluster_{}.pdb'.format(c)
+        # traj_out.save_pdb(clust_name)
 
         leader_out = trajectory[leaders[c]]
         lead_name = 'leader_{}.pdb'.format(c)
